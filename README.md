@@ -12,12 +12,10 @@ Usage
     [-f [{csv,html,json,latex,sql,string}]] [-o [O]]
     qrel baseline_result
     [result_to_compare [result_to_compare ...]]
-
   positional arguments:
     qrel                  qrel file in trec_eval format
     baseline_result       The baseline result to evaluate
     result_to_compare     The results to compare with the baseline
-
   optional arguments:
     -h, --help            show this help message and exit
     -m M [M ...]          Evaluation method
