@@ -92,6 +92,7 @@ $ python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_
 Save the output into a file:
 ``` sh
 $ python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_to_compare1 -m Rprec bpref -f html -o output.html
+$ cat output.html
 ```
 ``` html
 <table border="1" class="dataframe">
