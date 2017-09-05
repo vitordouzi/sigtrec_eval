@@ -66,7 +66,7 @@ $ python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_
 ```
 
 Using latex output format:
-```
+```shell
 $ python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_to_compare1 -m ndcg_cut.10 map_cut.10 -f latex
 ```
 ``` latex
