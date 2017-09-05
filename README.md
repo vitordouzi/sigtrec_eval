@@ -7,7 +7,7 @@ Requirements
 
 Usage
 ------------
-	"""usage: sigtrec_eval.py [-h] [-m M [M ...]] [-t [T]]
+	``usage: sigtrec_eval.py [-h] [-m M [M ...]] [-t [T]]
     [-s [{ttest,welchttest,None} [{ttest,welchttest,None} ...]]]
     [-f [{csv,html,json,latex,sql,string}]] [-o [O]]
     qrel baseline_result
@@ -24,4 +24,4 @@ Usage
                           Statistical test
     -f [{csv,html,json,latex,sql,string}]
                           Output format
-    -o [O]                Output to save result"""
+    -o [O]                Output to save result``
