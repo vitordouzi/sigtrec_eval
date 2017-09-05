@@ -1,5 +1,6 @@
 # sigtrec_eval
-sigtrec_eval is and python-wrapper that get the [trec_eval](http://trec.nist.gov/trec_eval/) measures, process the results and presented in and clean and configurable format. 
+
+sigtrec_eval is a python-wrapper that get the [trec_eval](http://trec.nist.gov/trec_eval/) output, process and present in clean and configurable format. 
 
 Requirements
 ------------
