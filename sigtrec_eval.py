@@ -115,7 +115,7 @@ if __name__ == "__main__":
 	parser.add_argument('-t', type=str, nargs='?', help='The trec_eval executor path', default='./trec_eval')
 	parser.add_argument('-s', type=str, nargs='*', help='Statistical test', default=['None'], choices=choices_s)
 	parser.add_argument('-f', type=str, nargs='?', help='Output format', default='string', choices=['csv', 'html', 'json', 'latex', 'sql', 'string'])
-	parser.add_argument('-o', type=str, nargs='?', help='Output to save result', default='')
+	parser.add_argument('-o', type=str, nargs='?', help='Output file', default='')
 
 	args = parser.parse_args()
 

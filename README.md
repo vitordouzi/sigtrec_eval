@@ -28,5 +28,5 @@ optional arguments:
                         Statistical test
   -f [{csv,html,json,latex,sql,string}]
                         Output format
-  -o [O]                Output to save result
+  -o [O]                Output file
 ```
