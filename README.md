@@ -66,7 +66,7 @@ $ python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_
 ```
 
 Using latex output format:
-```shell
+``` sh
 $ python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_to_compare1 -m ndcg_cut.10 map_cut.10 -f latex
 ```
 ``` latex
@@ -90,10 +90,32 @@ $ python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_
 ```
 
 Save the output into a file:
+``` sh
+$ python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_to_compare1 -m Rprec bpref -f html -o output.html
 ```
-$ python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_to_compare1 -m Rprec bpref -f csv -o output.csv
-$ cat output.csv 
-,Approach,Rprec,bpref
-0,baseline,0.1832 bl,0.2418 bl
-1,result_to_compare1,0.2031 ,0.2787
+``` html
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Approach</th>
+      <th>Rprec</th>
+      <th>bpref</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>baseline</td>
+      <td>0.1832 bl</td>
+      <td>0.2418 bl</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>result_to_compare1</td>
+      <td>0.2031</td>
+      <td>0.2787</td>
+    </tr>
+  </tbody>
+</table>
 ```
