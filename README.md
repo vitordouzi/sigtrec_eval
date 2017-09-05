@@ -7,6 +7,18 @@ sigtrec_eval uses [numpy](http://www.numpy.org/), [scipy](https://www.scipy.org/
 ```
 pip install -r requirements.txt
 ```
+Input Format
+------------
+The input format is based on trec_eval input format.
+
+qrel is the ground-truth file, which consists of text tuples of the form 
+``qid  iter  docno  rel``
+
+Read text tuples from trec_top_file of the form
+     ``qid iter   docno      rank  sim   run_id``
+ex.: ``030  Q0  ZF08-175-870  0   4238   prise1``
+
+For more information, including measures availables and their descriptions, visit [trec_eval README](http://www-nlpir.nist.gov/projects/t01v/trecvid.tools/trec_eval_video/A.README)
 
 Usage
 ------------
@@ -30,3 +42,45 @@ optional arguments:
                         Output format
   -o [O]                Output file
 ```
+
+Example
+------------
+
+Compute precision@10:
+```
+python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_to_compare1 -m P.10
+             Approach       P_10
+0            baseline  0.1960 bl
+1  result_to_compare1    0.2071
+```
+
+Compute precision@10 and recall@10:
+```
+python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_to_compare1 -m P.10 recall.10
+             Approach       P_10  recall_10
+0            baseline  0.1960 bl  0.1669 bl
+1  result_to_compare1    0.2071     0.1711
+```
+
+Using latex output format:
+```
+python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_to_compare1 -m P.10 recall.10 -f latex
+\begin{tabular}{llll}
+\toprule
+{} &            Approach &       P\_10 &  recall\_10 \\
+\midrule
+0 &            baseline &  0.1960 bl &  0.1669 bl \\
+1 &  result\_to\_compare1 &    0.2071  &    0.1711  \\
+\bottomrule
+\end{tabular}
+```
+
+Generate t-studdent test:
+```
+python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_to_compare1 example/result_to_compare2 -m P.10 recip_rank -s ttest
+             Approach       P_10 recip_rank
+0            baseline  0.1960 bl  0.5467 bl
+1  result_to_compare1   0.2071 ▲   0.4004 ▼
+2  result_to_compare2   0.0002 ▼   0.0529 ▼
+```
+
