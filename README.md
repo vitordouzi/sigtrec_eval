@@ -11,15 +11,15 @@ Input Format
 ------------
 The input format is based on trec_eval input format.
 
-qrel is the ground-truth file, which consists of text tuples of the form:
+qrel is the ground-truth file, which consists of each line with tuples of the form:
 
 ``qid  iter  docno  rel``
 
 Read text tuples from trec_top_file of the form:
-
-     ``qid iter   docno      rank  sim   run_id``
-     
-ex.: ``030  Q0  ZF08-175-870  0   4238   prise1``
+```
+     qid iter   docno      rank  sim   run_id
+ex.: 030  Q0  ZF08-175-870  0   4238   prise1
+```
 
 For more information, including measures availables and their descriptions, visit [trec_eval README](http://www-nlpir.nist.gov/projects/t01v/trecvid.tools/trec_eval_video/A.README).
 
