@@ -67,13 +67,13 @@ python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_to
 
 Using latex output format:
 ```
-python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_to_compare1 -m P.10 recall.10 -f latex
+python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_to_compare1 -m ndcg_cut.10 map_cut.10 -f latex
 \begin{tabular}{llll}
 \toprule
-{} &            Approach &       P\_10 &  recall\_10 \\
+{} &            Approach & ndcg\_cut\_10 & map\_cut\_10 \\
 \midrule
-0 &            baseline &  0.1960 bl &  0.1669 bl \\
-1 &  result\_to\_compare1 &    0.2071  &    0.1711  \\
+0 &            baseline &   0.2482 bl &  0.0979 bl \\
+1 &  result\_to\_compare1 &     0.2231  &    0.0805  \\
 \bottomrule
 \end{tabular}
 ```
