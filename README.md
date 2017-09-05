@@ -51,7 +51,7 @@ Example
 
 Compute precision@10:
 ```
-python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_to_compare1 -m P.10
+$ python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_to_compare1 -m P.10
              Approach       P_10
 0            baseline  0.1960 bl
 1  result_to_compare1    0.2071
@@ -59,7 +59,7 @@ python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_to
 
 Compute precision@10 and recall@10:
 ```
-python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_to_compare1 -m P.10 recall.10
+$ python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_to_compare1 -m P.10 recall.10
              Approach       P_10  recall_10
 0            baseline  0.1960 bl  0.1669 bl
 1  result_to_compare1    0.2071     0.1711
@@ -67,7 +67,7 @@ python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_to
 
 Using latex output format:
 ```
-python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_to_compare1 -m ndcg_cut.10 map_cut.10 -f latex
+$ python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_to_compare1 -m ndcg_cut.10 map_cut.10 -f latex
 \begin{tabular}{llll}
 \toprule
 {} &            Approach & ndcg\_cut\_10 & map\_cut\_10 \\
@@ -80,10 +80,18 @@ python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_to
 
 Generate t-studdent test:
 ```
-python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_to_compare1 example/result_to_compare2 -m P.10 recip_rank -s ttest
+$ python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_to_compare1 example/result_to_compare2 -m P.10 recip_rank -s ttest
              Approach       P_10 recip_rank
 0            baseline  0.1960 bl  0.5467 bl
 1  result_to_compare1   0.2071 ▲   0.4004 ▼
 2  result_to_compare2   0.0002 ▼   0.0529 ▼
 ```
 
+Save the output into a file:
+```
+$ python3 sigtrec_eval.py example/qrelFile.qrel example/baseline example/result_to_compare1 -m Rprec bpref -f csv -o output.csv
+$ cat output.csv 
+,Approach,Rprec,bpref
+0,baseline,0.1832 bl,0.2418 bl
+1,result_to_compare1,0.2031 ,0.2787
+```
