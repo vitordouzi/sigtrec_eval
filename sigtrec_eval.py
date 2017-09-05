@@ -5,13 +5,13 @@ Created on Fri Set 1 16:07:00 2017
 @author: Vítor Mangaravite
 """
 import sys
+import os
+import subprocess
+import argparse
 import numpy as np
 import pandas as pd
 from scipy.stats.mstats import ttest_rel
 from scipy.stats import ttest_ind
-import subprocess
-import os
-import argparse
 
 class result(object):
 	def __init__(self, metric, k=None):
