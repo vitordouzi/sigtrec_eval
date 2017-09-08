@@ -11,7 +11,7 @@ import argparse
 import numpy as np
 import pandas as pd
 from scipy.stats.mstats import ttest_rel
-from scipy.stats import ttest_ind
+from scipy.stats import ttest_ind, wilcoxon
 
 class result(object):
 	def __init__(self, metric, k=None):
@@ -58,6 +58,13 @@ class result(object):
 		pbase, pcomp = [ self.results[doc_id] for doc_id in doc_ids ], [ other_result.results[doc_id] for doc_id in doc_ids ]
 		if pbase != pcomp:
 			(tvalue, pvalue) = ttest_ind(pbase, pcomp, equal_var=False)
+			return pvalue
+		return 1.
+	def _test_wilcoxon(self, other_result):
+		doc_ids = set( self.results.keys() & other_result.results.keys() )
+		pbase, pcomp = [ self.results[doc_id] for doc_id in doc_ids ], [ other_result.results[doc_id] for doc_id in doc_ids ]
+		if pbase != pcomp:
+			(tvalue, pvalue) = wilcoxon(pbase, pcomp)
 			return pvalue
 		return 1.
 class resultSet(object):
@@ -111,9 +118,9 @@ if __name__ == "__main__":
 	parser.add_argument('qrel', type=str, nargs=1, help='qrel file in trec_eval format')
 	parser.add_argument('baseline_result', type=str, nargs=1, help='The baseline result to evaluate')
 	parser.add_argument('result_to_compare', type=str, nargs='*', help='The results to compare with the baseline')
-	parser.add_argument('-m', type=str, nargs='+', help='Evaluation method')
-	parser.add_argument('-t', type=str, nargs='?', help='The trec_eval executor path', default='./trec_eval')
-	parser.add_argument('-s', type=str, nargs='*', help='Statistical test', default=['None'], choices=choices_s)
+	parser.add_argument('-m', type=str, nargs='+', help='Evaluation method', default=['P.10', 'recall.10'])
+	parser.add_argument('-t', type=str, nargs='?', help='The trec_eval executor path (Default: ./trec_eval)', default='./trec_eval')
+	parser.add_argument('-s', type=str, nargs='*', help='Statistical test (Default: ttest)', default=['ttest'], choices=choices_s)
 	parser.add_argument('-f', type=str, nargs='?', help='Output format', default='string', choices=['csv', 'html', 'json', 'latex', 'sql', 'string'])
 	parser.add_argument('-o', type=str, nargs='?', help='Output file', default='')
 
