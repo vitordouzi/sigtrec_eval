@@ -113,13 +113,15 @@ def print_dataframe(base, list_to_compare, format_to_print, _format='string'):
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Sigeval A/B Testing.')
 
+	dir_trec_ = os.path.join(".", os.path.dirname(__file__), "trec_eval")
+
 	choices_s = [str(func).replace("_test_",'') for func in dir(result) if callable(getattr(result, func)) and func.startswith("_test_")]
 	choices_s.append('None')
 	parser.add_argument('qrel', type=str, nargs=1, help='qrel file in trec_eval format')
 	parser.add_argument('baseline_result', type=str, nargs=1, help='The baseline result to evaluate')
 	parser.add_argument('result_to_compare', type=str, nargs='*', help='The results to compare with the baseline')
 	parser.add_argument('-m', type=str, nargs='+', help='Evaluation method', default=['P.10', 'recall.10'])
-	parser.add_argument('-t', type=str, nargs='?', help='The trec_eval executor path (Default: ./trec_eval)', default='./trec_eval')
+	parser.add_argument('-t', type=str, nargs='?', help='The trec_eval executor path (Default: %s)' % dir_trec_, default=dir_trec_)
 	parser.add_argument('-s', type=str, nargs='*', help='Statistical test (Default: ttest)', default=['ttest'], choices=choices_s)
 	parser.add_argument('-f', type=str, nargs='?', help='Output format', default='string', choices=['csv', 'html', 'json', 'latex', 'sql', 'string'])
 	parser.add_argument('-o', type=str, nargs='?', help='Output file', default='')
