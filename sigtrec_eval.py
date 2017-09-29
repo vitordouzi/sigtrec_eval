@@ -147,7 +147,7 @@ if __name__ == "__main__":
 		p = subprocess.Popen(' '.join([args.t, args.qrel[0], args.baseline_result[0], '-q', '-m', m]), stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 		outc, err = p.communicate()
 		baseline_resultset.add_resultset(str(outc)[2:-1])
-		for to_compare in args.result_to_compare:
+		for to_compare in [tc for tc in args.result_to_compare if os.path.exists(tc)]:
 			to_compare_id = os.path.basename(to_compare)
 			if to_compare_id not in results_to_compare:
 				results_to_compare[to_compare_id] = resultSet(to_compare_id, baseline_resultset)
