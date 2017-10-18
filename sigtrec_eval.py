@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Set 1 16:07:00 2017
+Created on Mon Out 1 10:07:00 2017
 
 @author: Vítor Mangaravite
 """
@@ -10,156 +10,187 @@ import subprocess
 import argparse
 import numpy as np
 import pandas as pd
+import multiprocessing
+from sklearn.model_selection import KFold
 from scipy.stats.mstats import ttest_rel
 from scipy.stats import ttest_ind, wilcoxon
 
-class result(object):
-	def __init__(self, metric, k=None):
-		self.metric = metric
-		self.k = k
-		self.baseline = 0.0
-		self.avg_result = 0.0
-		self.tests_pvalue = {}
-		self.results = {}
-	def print_tests(self, _format):
-		s = ' '
-		for (t, v) in self.tests_pvalue.items():
-			#{ 'GT_TEST_01':'▲', 'LT_TEST_01':'▼', 'GT_TEST_05':'ᐃ', 'LT_TEST_05':'ᐁ' }
-			if v < 0.01:
-				if self.avg_result < self.baseline:
-					s += _format['LT_TEST_01']
-				elif self.avg_result > self.baseline:
-					s += _format['GT_TEST_01']
-			elif v < 0.05:
-				if self.avg_result < self.baseline:
-					s += _format['LT_TEST_05']
-				elif self.avg_result > self.baseline:
-					s += _format['GT_TEST_05']
-			else:
-				s += ' '
-		return s
+from imblearn.over_sampling import RandomOverSampler, ADASYN, SMOTE
 
-	def _add_instance(self, doc_id, value):
-		self.results[doc_id] = float(value)
-	def _statistical_test(self, other_result, tests):
-		for test_name in tests:
-			self.tests_pvalue[test_name] = getattr(self, '_test_'+test_name)(other_result)
-	def avg(self):
-		self.avg_result = np.mean( [ v for (k,v) in self.results.items() ] )
-	def _test_ttest(self, other_result):
-		doc_ids = set( self.results.keys() & other_result.results.keys() )
-		pbase, pcomp = [ self.results[doc_id] for doc_id in doc_ids ], [ other_result.results[doc_id] for doc_id in doc_ids ]
-		if pbase != pcomp:
-			(tvalue, pvalue) = ttest_rel(pbase, pcomp)
-			return pvalue
-		return 1.
-	def _test_welchttest(self, other_result):
-		doc_ids = set( self.results.keys() & other_result.results.keys() )
-		pbase, pcomp = [ self.results[doc_id] for doc_id in doc_ids ], [ other_result.results[doc_id] for doc_id in doc_ids ]
-		if pbase != pcomp:
-			(tvalue, pvalue) = ttest_ind(pbase, pcomp, equal_var=False)
-			return pvalue
-		return 1.
-	def _test_wilcoxon(self, other_result):
-		doc_ids = set( self.results.keys() & other_result.results.keys() )
-		pbase, pcomp = [ self.results[doc_id] for doc_id in doc_ids ], [ other_result.results[doc_id] for doc_id in doc_ids ]
-		if pbase != pcomp:
-			(tvalue, pvalue) = wilcoxon(pbase, pcomp)
-			return pvalue
-		return 1.
-class resultSet(object):
-	def __init__(self, approach, base=None):
-		self.approach = approach
-		self.base = base
-		self.results_metrics = {}
-	def add_resultset(self, trec_result_):
-		result_raw = [ [ w.strip() for w in line.split('\\t') ] for line in trec_result_.split('\\n') ]
-		for ( metric, doc_id, value ) in result_raw[:-1]:
-			if doc_id != 'all':
-				if metric not in self.results_metrics:
-					(metric_name, k) = self._get_metric(metric)
-					self.results_metrics[metric] = result(metric_name, k=k)
-				self.results_metrics[metric]._add_instance(doc_id, value)
-	def _get_metric(self, metric):
-		parts = metric.split('_')
-		if parts[-1].isnumeric():
-			return ( '_'.join(parts[:-1]), int(parts[-1]) )
-		return (metric, None)
-	def avg(self):
-		for m in self.results_metrics:
-			self.results_metrics[m].avg()
-			if self.base == None:
-				self.results_metrics[m].baseline = self.results_metrics[m].avg_result
-			else:
-				self.results_metrics[m].baseline = self.base.results_metrics[m].avg_result
-	def statistical_test(self, other_resultset, tests):
-		for m in self.results_metrics:
-			if m in other_resultset.results_metrics:
-				self.results_metrics[m]._statistical_test( other_resultset.results_metrics[m], tests )
+class InputAction(argparse.Action):
+    def __init__(self, *args, **kwargs):
+        super(InputAction, self).__init__(*args, **kwargs)
+        self.nargs = '+'
+    def __call__(self, parser, namespace, values, option_string):
+        lst = getattr(namespace, self.dest, []) or []
+        if len(values) > 1:
+        	lst.append(InputResult(values[0], values[1:]))
+        else:
+        	with open(values[0].name) as file_input:
+        		for line in file_input.readlines():
+        			parts = line.strip().split(' ')
+        			lst.append(InputResult(parts[0], parts[1:]))
+        setattr(namespace, self.dest, lst)
 
-def print_dataframe(base, list_to_compare, format_to_print, _format='string'):
-	df = pd.DataFrame()
-	approach_colum = [ base.approach ]
-	list(map( lambda x: approach_colum.append(x.approach), list_to_compare))
-	df['Approach'] = approach_colum
-	metrics = list(base.results_metrics.keys())
-	for m in metrics:
-		approach_colum = [ '%.4f bl' % base.results_metrics[m].avg_result ]
-		list(map( lambda x: approach_colum.append('%.4f%s' % (x.results_metrics[m].avg_result, x.results_metrics[m].print_tests(format_to_print) ) ), list_to_compare))
-		df[m] = approach_colum
-	with pd.option_context('display.max_rows', None, 'display.max_columns', 10000000000):
-		return getattr(df, 'to_'+_format)()
+class InputResult(object):
+	def __init__(self, qrel, result_to_compare):
+		if type(qrel) is str: 
+			self.qrel = qrel
+			self.result_to_compare = result_to_compare
+		else:
+			self.qrel = qrel.name
+			self.result_to_compare = [ x.name for x in result_to_compare ]
+	def __repr__(self):
+		return 'InputResult(%r, %r)' % (self.qrel, self.result_to_compare)
 
-if __name__ == "__main__":
-	parser = argparse.ArgumentParser(description='Sigeval A/B Testing.')
-
-	dir_trec_ = os.path.join(".", os.path.dirname(__file__), "trec_eval")
-
-	choices_s = [str(func).replace("_test_",'') for func in dir(result) if callable(getattr(result, func)) and func.startswith("_test_")]
-	choices_s.append('None')
-	parser.add_argument('qrel', type=str, nargs=1, help='qrel file in trec_eval format')
-	parser.add_argument('baseline_result', type=str, nargs=1, help='The baseline result to evaluate')
-	parser.add_argument('result_to_compare', type=str, nargs='*', help='The results to compare with the baseline')
-	parser.add_argument('-m', type=str, nargs='+', help='Evaluation method', default=['P.10', 'recall.10'])
-	parser.add_argument('-t', type=str, nargs='?', help='The trec_eval executor path (Default: %s)' % dir_trec_, default=dir_trec_)
-	parser.add_argument('-s', type=str, nargs='*', help='Statistical test (Default: ttest)', default=['ttest'], choices=choices_s)
-	parser.add_argument('-f', type=str, nargs='?', help='Output format', default='string', choices=['csv', 'html', 'json', 'latex', 'sql', 'string'])
-	parser.add_argument('-o', type=str, nargs='?', help='Output file', default='')
-
-	args = parser.parse_args()
-
-	tests = [ s for s in args.s if s != 'None']
-
-	#format_to_print = {}
-	#format_to_print['to_string'] = { 'GT_TEST_01':'▲', 'LT_TEST_01':'▼', 'GT_TEST_05':'ᐃ', 'LT_TEST_05':'ᐁ' }
-	#format_to_print['to_latex'] = { 'GT_TEST_01':'▲', 'LT_TEST_01':'▼', 'GT_TEST_05':'ᐃ', 'LT_TEST_05':'ᐁ' }
-	#format_to_print['to_html'] = { 'GT_TEST_01':'▲', 'LT_TEST_01':'▼', 'GT_TEST_05':'ᐃ', 'LT_TEST_05':'ᐁ' }
-
-	format_to_print = { 'GT_TEST_01':'▲', 'LT_TEST_01':'▼', 'GT_TEST_05':'ᐃ', 'LT_TEST_05':'ᐁ' }
-
-
-	results_to_compare = {}
-	baseline_resultset = None
-	for m in args.m:
-		baseline_id = os.path.basename(args.baseline_result[0])
-		if baseline_resultset == None:
-			baseline_resultset = resultSet(baseline_id)
-		p = subprocess.Popen(' '.join([args.t, args.qrel[0], args.baseline_result[0], '-q', '-m', m]), stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-		outc, err = p.communicate()
-		baseline_resultset.add_resultset(str(outc)[2:-1])
-		for to_compare in [tc for tc in args.result_to_compare if os.path.exists(tc)]:
-			to_compare_id = os.path.basename(to_compare)
-			if to_compare_id not in results_to_compare:
-				results_to_compare[to_compare_id] = resultSet(to_compare_id, baseline_resultset)
-			p = subprocess.Popen(' '.join([args.t, args.qrel[0], to_compare, '-q', '-m', m]), stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-			outc, err = p.communicate()
-			results_to_compare[to_compare_id].add_resultset(str(outc)[2:-1])
-	baseline_resultset.avg()
-	for to_compare in results_to_compare.values():
-		to_compare.avg()
-		to_compare.statistical_test( baseline_resultset, tests )
-	if args.o == '':
-		print(print_dataframe(baseline_resultset, results_to_compare.values(), format_to_print, _format=args.f))
+def get_test(test, pbase, pcomp, multi_test=False):
+	if np.array_equal(pbase.values, pcomp.values):
+		pvalue = 1.
 	else:
-		with open(args.o, 'w') as fil:
-			fil.write(print_dataframe(baseline_resultset, results_to_compare.values(), format_to_print, _format=args.f))
+		if test == 'student':
+			(tvalue, pvalue) = ttest_rel(pbase, pcomp)
+		elif test == 'wilcoxon':
+			(tvalue, pvalue) = wilcoxon(pbase, pcomp)
+		elif test == 'welcht':
+			(tvalue, pvalue) = ttest_ind(pbase, pcomp, equal_var=False)
+	if pvalue < 0.05:
+		pbase_mean = pbase.mean()
+		pcomp_mean = pcomp.mean()
+		if pvalue < 0.01:
+			if pbase_mean > pcomp_mean:
+				result_test = '▼ '
+			else:
+				result_test = '▲ '
+		else:
+			if pbase_mean > pcomp_mean:
+				result_test = 'ᐁ '
+			else:
+				result_test = 'ᐃ '
+	else:
+		if not multi_test:
+			result_test = '  '
+		else:
+			result_test = '⏺ '
+	return result_test
+def getQrel(qrelFile):
+	return os.path.basename(qrelFile).replace('.qrel','')
+def getApproach(nameFile):
+	return os.path.basename(nameFile).replace('.out','')
+
+def get_sampler(summ, random_state=0):
+	if summ == "smote":
+		return SMOTE(n_jobs=multiprocessing.cpu_count(), k_neighbors=10, random_state=random_state)
+	return RandomOverSampler(random_state=random_state)
+
+dir_trec_ = os.path.join(".", os.path.dirname(__file__), "trec_eval")
+""" Configuring the argument parser """
+parser = argparse.ArgumentParser()
+parser.add_argument('-i','--input', action=InputAction, type=argparse.FileType('rt'), nargs='+', metavar='QREL BASELINE [TO_COMPARE ...]', help='The list of positional argument where the first arg is the qrel file, the second is the baseline result and the third is the optional list of results to compare.')
+parser.add_argument('-m','--measure', type=str, nargs='+', help='Evaluation method.', default=['P.10', 'recall.10'])
+parser.add_argument('-t','--trec_eval', type=str, nargs='?', help='The trec_eval executor path (Default: %s).' % dir_trec_, metavar='TREC_EVAL_PATH', default=dir_trec_)
+parser.add_argument('-sum','--summary', type=str, nargs='*', help='Summary each approach results using Over-sampling methods (Default: None).', default=['None'], choices=['ros','smote'])
+parser.add_argument('-s','--statistical_test', type=str, nargs='*', help='Statistical test (Default: student).', default=['student'], choices=['None','student','wilcoxon','welcht'])
+parser.add_argument('-f','--format', type=str, nargs='?', help='Output format.', default='string', choices=['csv', 'html', 'json', 'latex', 'sql', 'string'])
+parser.add_argument('-o','--output', type=str, nargs='?', help='Output file.', default='')
+parser.add_argument('-cv','--cross-validation', type=int, nargs='?', help='Cross-Validation.', default=1)
+parser.add_argument('-r','--round', type=int, nargs='?', help='Round the result.', default=4)
+
+args = parser.parse_args()
+args.cross_validation = max(1, args.cross_validation)
+args.statistical_test = [st for st in args.statistical_test if st != 'None']
+args.summary = [summ for summ in args.summary if summ != 'None']
+print_summ = len(args.summary) > 0 and len(args.input) > 0 
+
+"""Building DataFrames"""
+df_raw = pd.DataFrame()
+raw = []
+for input_result in args.input:
+	for m in args.measure:
+		for (idx, to_compare) in enumerate(input_result.result_to_compare):
+			content = str(subprocess.Popen(' '.join([args.trec_eval, input_result.qrel, to_compare, '-q', '-m', m]), stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).communicate()[0])[2:-1]
+			raw.extend([ (getQrel(input_result.qrel), idx, getApproach(to_compare), *( w.strip() for w in line.split('\\t') )) for line in content.split('\\n') ][:-1])
+df_raw = pd.DataFrame(raw, columns=['qrel', 'idx_approach', 'approach', 'measure', 'docid', 'result'])
+
+df_finale = pd.pivot_table(df_raw, index=['qrel', 'idx_approach', 'approach', 'docid'], columns='measure', values='result', aggfunc='first')
+df_finale[np.array(df_finale.columns)] = df_finale[np.array(df_finale.columns)].astype(np.float64)
+evaluation_methods = list(df_finale.columns.values)
+
+columns_names = ['app_name', *evaluation_methods, *(len(args.statistical_test)*evaluation_methods)]
+
+multicolumn_names = list(zip(len(evaluation_methods)*['result'], evaluation_methods))
+for test_name in args.statistical_test:
+	multicolumn_names.extend( list(zip(len(evaluation_methods)*[test_name], evaluation_methods)) )
+
+ 
+""" Process and print individual result by dataset """
+for (qrel, qrel_group) in df_finale.groupby('qrel'):
+	df_baseline = qrel_group.loc[qrel_group.index.get_level_values('idx_approach') == 0]
+	if args.cross_validation > 1:
+		kf = KFold(n_splits=args.cross_validation, shuffle=True, random_state=42)
+		docids_test_folds = [ test_index for train_index, test_index in kf.split(df_baseline.index.get_level_values('docid')) ]
+	raw = []
+	for ((idx_app, app_name), app_group) in qrel_group.groupby(['idx_approach', 'approach']):
+		line = [ app_name ]
+		for (test, method) in multicolumn_names:
+			if test == 'result':
+				if args.cross_validation > 1:
+					line.append( np.mean([ app_group[method][test_index].mean() for test_index in docids_test_folds ]) )
+				else:
+					line.append( app_group[method].mean() )
+			elif idx_app == 0:
+				line.append( 'bl' )
+			else:
+				pbase = df_baseline.loc[df_baseline.index.get_level_values('docid').isin(app_group.index.get_level_values('docid'))][method].sort_index() # Get the baseline result
+				pcomp = app_group.loc[app_group.index.get_level_values('docid').isin(df_baseline.index.get_level_values('docid'))][method].sort_index()   # Get the results to compare
+				line.append( get_test(test, pbase, pcomp, len(args.statistical_test) > 1) )
+		raw.append(line)
+	df_to_print = pd.DataFrame(raw, columns=columns_names)
+	df_to_print = df_to_print.set_index('app_name')
+	df_to_print.columns = pd.MultiIndex.from_tuples(multicolumn_names)
+
+	df_to_print_r = df_to_print['result'].round(args.round).astype(str)
+	for col in df_to_print.columns.levels[0][1:]:
+		df_to_print_r = df_to_print_r + ' ' + df_to_print[col].astype(str)
+
+	with pd.option_context('display.max_rows', None, 'display.max_columns', 10000000000):
+		print(getattr(df_to_print_r, 'to_'+args.format)())
+	print()
+if print_summ:
+	""" Process and print the results summarization """
+	df_finale = pd.pivot_table(df_raw, index=['qrel', 'docid'], columns=['idx_approach','measure'], values='result', aggfunc='first').dropna()
+	df_finale[np.array(df_finale.columns)] = df_finale[np.array(df_finale.columns)].apply(pd.to_numeric)
+	for summ in args.summary:
+		y = pd.factorize(df_finale.index.get_level_values('qrel'))[0]
+		raw = []
+		for repetition in range(args.cross_validation):
+			sampler = get_sampler(summ, random_state=repetition)
+			X_res, y_res = sampler.fit_sample(df_finale, y)
+			raw.extend(X_res)
+		df_result = pd.DataFrame(raw, columns=df_finale.columns).round(args.round)
+		raw = []
+		df_baseline = df_result[0]
+		print(list(zip(df_result[0]['P_10'][df_result[0]['P_10']!=df_result[2]['P_10']],df_result[2]['P_10'][df_result[0]['P_10']!=df_result[2]['P_10']])))
+		for idx_app in df_result.columns.levels[0]:
+			line = [ idx_app ]
+			for (test, method) in multicolumn_names:
+				if test == 'result':
+					line.append( df_result[idx_app][method].mean() )
+				elif idx_app == 0:
+					line.append( 'bl' )
+				else:
+					pbase = df_baseline[method] # Get the baseline result
+					pcomp = df_result[idx_app][method]   # Get the results to compare
+					line.append( get_test(test, pbase, pcomp, len(args.statistical_test) > 1) )
+			raw.append(line)
+		df_to_print = pd.DataFrame(raw, columns=columns_names)
+
+		df_to_print = df_to_print.set_index('app_name')
+		df_to_print.columns = pd.MultiIndex.from_tuples(multicolumn_names)
+		df_to_print_r = df_to_print['result'].round(args.round).astype(str)
+		for col in df_to_print.columns.levels[0][1:]:
+			df_to_print_r = df_to_print_r + ' ' + df_to_print[col].astype(str)
+		
+		print(sampler)
+		with pd.option_context('display.max_rows', None, 'display.max_columns', 10000000000):
+			print(getattr(df_to_print_r, 'to_'+args.format)())
+		print()
